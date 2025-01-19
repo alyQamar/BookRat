@@ -21,15 +21,27 @@ class Book extends Model
         return $query->where('title', 'LIKE', '%' . $title . '%');
     }
 
+    public function scopeWithReviewsCount(Builder $query, $from = null, $to = null): Builder|QueryBuilder
+    {
+        return $query->withCount(['reviews' => fn(Builder $query) => $this->dateRangeFilter($query, $from, $to)]);
+
+    }
+
+    public function scopeWithAvgRating(Builder $query, $from = null, $to = null): Builder|QueryBuilder
+    {
+        return $query->withAvg(['reviews' => fn(Builder $query) => $this->dateRangeFilter($query, $from, $to)], 'rating');
+
+    }
+
     public function scopePopular(Builder $query, $from = null, $to = null): Builder|QueryBuilder
     {
-        return $query->withCount(['reviews' => fn(Builder $query) => $this->dateRangeFilter($query, $from, $to)])
+        return $query->withReviewsCount()
             ->orderBy('reviews_count', 'DESC');
     }
 
     public function scopeHighestRated(Builder $query, $from = null, $to = null): Builder|QueryBuilder
     {
-        return $query->withAvg(['reviews' => fn(Builder $query) => $this->dateRangeFilter($query, $from, $to)], 'rating')
+        return $query->withAvgRating()
             ->orderBy('reviews_avg_rating', 'DESC');
 
     }
@@ -53,6 +65,7 @@ class Book extends Model
         }
 
     }
+
     public function scopePopularLastMonth(Builder $query): Builder|QueryBuilder
     {
         return $query->HighestRated(now()->subMonth(), now())
@@ -70,7 +83,7 @@ class Book extends Model
 
     public function scopeHighestRatedLastMonth(Builder $query): Builder|QueryBuilder
     {
-        return $query->HighestRated(now()->subMonth(), now())
+        return $query->highestRated(now()->subMonth(), now())
             ->popular(now()->subMonth(), now())
             ->minReview(2);
     }
@@ -83,4 +96,9 @@ class Book extends Model
             ->minReview(5);
     }
 
+    protected static function booted()
+    {
+        static::updated(fn(Book $book) => cache()->forget('books:' . $book->id));
+        static::deleted(fn(Book $book) => cache()->forget('books:' . $book->id));
+    }
 }
