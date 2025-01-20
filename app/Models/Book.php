@@ -68,8 +68,8 @@ class Book extends Model
 
     public function scopePopularLastMonth(Builder $query): Builder|QueryBuilder
     {
-        return $query->HighestRated(now()->subMonth(), now())
-            ->popular(now()->subMonth(), now())
+        return $query->popular(now()->subMonth(), now())
+            ->highestRated(now()->subMonth(), now())
             ->minReview(2);
     }
 
@@ -100,5 +100,7 @@ class Book extends Model
     {
         static::updated(fn(Book $book) => cache()->forget('books:' . $book->id));
         static::deleted(fn(Book $book) => cache()->forget('books:' . $book->id));
+        static::created(fn(Book $book) => cache()->forget('books:' . $book->id));
+
     }
 }
